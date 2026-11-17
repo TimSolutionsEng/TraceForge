@@ -124,3 +124,6 @@ By completing TraceForge, I aim to develop a practical understanding of:
 ---
 
 *TraceForge is a personal educational project built to explore the engineering behind SIEM systems, strengthen practical development skills and develop a deeper understanding of defensive cybersecurity.*
+### Development Progress
+
+- [Day 4 — Database, Log Collection and Parsing](docs/day-04-progress.md)
