@@ -39,11 +39,22 @@ def init_db():
             raw TEXT NOT NULL
         )
     """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            alert_key TEXT NOT NULL UNIQUE,
+            alert_type TEXT NOT NULL,
+            source_ip TEXT NOT NULL,
+            failed_attempts INTEGER NOT NULL,
+            severity TEXT NOT NULL,
+            description TEXT NOT NULL
+        )
+    """)
 
     connection.commit()
     connection.close()
 
-    print("Events table created successfully!")
+    print("Events and alerts tables created successfully!")
 
 
 def save_events(events):
@@ -81,7 +92,53 @@ def save_events(events):
 
         connection.commit()
         return inserted
+    
 
     finally:
         connection.close()
 
+
+def save_alerts(alerts):
+    connection = get_connection()
+    inserted = 0
+
+    try:
+        for alert in alerts:
+
+            alert_key = hashlib.sha256(
+                (
+                    alert["alert_type"]
+                    + alert["source_ip"]
+                    + str(alert["failed_attempts"])
+                    + alert["severity"]
+                    + alert["description"]
+                ).encode("utf-8")
+            ).hexdigest()
+
+            cursor = connection.execute("""
+                INSERT OR IGNORE INTO alerts (
+                    alert_key,
+                    alert_type,
+                    source_ip,
+                    failed_attempts,
+                    severity,
+                    description
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                alert_key,
+                alert["alert_type"],
+                alert["source_ip"],
+                alert["failed_attempts"],
+                alert["severity"],
+                alert["description"]
+            ))
+
+            if cursor.rowcount == 1:
+                inserted += 1
+
+        connection.commit()
+        return inserted
+
+    finally:
+        connection.close()

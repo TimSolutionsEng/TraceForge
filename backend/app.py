@@ -4,7 +4,7 @@ from pathlib import Path
 from collector.log_collector import collect_logs
 from parser.log_parser import parse_log
 from detection.detection_engine import detect_failed_logins
-from database.database import init_db, save_events
+from database.database import init_db, save_events, save_alerts
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -30,13 +30,15 @@ def process_logs(log_file):
     # Step 4: Initialize the database and save events
     init_db()
     inserted_events = save_events(events)
+    inserted_alerts = save_alerts(alerts)
 
     # Step 5: Return processing results
     results = {
         "total_logs": len(raw_logs),
         "parsed_events": len(events),
         "inserted_events": inserted_events,
-        "alerts": alerts
+        "alerts": alerts,
+        "inserted_alerts": inserted_alerts,
     }
 
     return results
@@ -49,6 +51,7 @@ def main():
     print(f"Raw logs collected: {results['total_logs']}")
     print(f"Events parsed: {results['parsed_events']}")
     print(f"Events saved: {results['inserted_events']}")
+    print(f"Alerts saved: {results['inserted_alerts']}")
     print(f"Alerts detected: {len(results['alerts'])}")
 
     if results["alerts"]:

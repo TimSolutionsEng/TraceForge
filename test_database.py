@@ -110,3 +110,84 @@ def test_saved_event_can_be_retrieved(tmp_path, monkeypatch):
         "admin",
         "192.168.1.20"
     )
+
+def create_sample_alert():
+    return {
+        "alert_type": "brute_force_attempt",
+        "source_ip": "192.168.1.20",
+        "failed_attempts": 5,
+        "severity": "high",
+        "description": (
+            "Detected 5 failed login attempts "
+            "from IP address 192.168.1.20"
+        )
+    }
+
+
+def test_init_db_creates_alerts_table(tmp_path, monkeypatch):
+    setup_test_database(tmp_path, monkeypatch)
+
+    database_module.init_db()
+
+    connection = database_module.get_connection()
+
+    tables = connection.execute("""
+        SELECT name FROM sqlite_master
+        WHERE type='table' AND name='alerts'
+    """).fetchall()
+
+    connection.close()
+
+    assert len(tables) == 1
+
+
+def test_save_alerts_inserts_alert(tmp_path, monkeypatch):
+    setup_test_database(tmp_path, monkeypatch)
+
+    database_module.init_db()
+
+    alert = create_sample_alert()
+    inserted = database_module.save_alerts([alert])
+
+    assert inserted == 1
+
+
+def test_save_alerts_prevents_duplicates(tmp_path, monkeypatch):
+    setup_test_database(tmp_path, monkeypatch)
+
+    database_module.init_db()
+
+    alert = create_sample_alert()
+
+    first_insert = database_module.save_alerts([alert])
+    second_insert = database_module.save_alerts([alert])
+
+    assert first_insert == 1
+    assert second_insert == 0
+
+
+def test_saved_alert_can_be_retrieved(tmp_path, monkeypatch):
+    setup_test_database(tmp_path, monkeypatch)
+
+    database_module.init_db()
+
+    alert = create_sample_alert()
+    database_module.save_alerts([alert])
+
+    connection = database_module.get_connection()
+
+    record = connection.execute("""
+        SELECT alert_type, source_ip, failed_attempts,
+               severity, description
+        FROM alerts
+    """).fetchone()
+
+    connection.close()
+
+    assert record == (
+        "brute_force_attempt",
+        "192.168.1.20",
+        5,
+        "high",
+        "Detected 5 failed login attempts from IP address 192.168.1.20"
+    )

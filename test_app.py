@@ -34,9 +34,28 @@ def test_process_logs_end_to_end(tmp_path, monkeypatch):
     assert len(results["alerts"]) == 1
     assert results["alerts"][0]["source_ip"] == "192.168.1.20"
     assert results["alerts"][0]["failed_attempts"] == 3
+    assert results["inserted_alerts"] == 1
 
     # Run the same logs again to test duplicate protection
     second_run = process_logs(log_file)
 
     assert second_run["inserted_events"] == 0
+    assert second_run["inserted_alerts"] == 0
     assert len(second_run["alerts"]) == 1
+    connection = database_module.get_connection()
+
+    saved_alerts = connection.execute("""
+        SELECT alert_type, source_ip, failed_attempts, severity
+        FROM alerts
+    """).fetchall()
+
+    connection.close()
+
+    assert len(saved_alerts) == 1
+
+    assert saved_alerts[0] == (
+        "brute_force_attempt",
+        "192.168.1.20",
+        3,
+        "high"
+    )
